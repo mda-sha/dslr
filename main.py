@@ -7,12 +7,14 @@ class DatasetInfo:
     def __init__(self, df):
         self.df = df
         self.cols = df.dtypes[df.dtypes != 'object'].index
+        self.count = []
         self.mean = []
         self.std = []
         self.min = []
         self.max = []
-        self.upper_quartile = []
-        self.median = []
+        self.quartile_25 = []
+        self.quartile_50 = []
+        self.quartile_75 = []
 
 
     def count_mean(self, col):
@@ -25,67 +27,29 @@ class DatasetInfo:
                 sum += (self.df.loc[i][col] - self.mean[-1]) ** 2
         self.std.append((sum / (len(self.df[col][self.df[col].isna() == False]) - 1)) ** 0.5)
 
-    def count_min(self, col):
-        m = self.df.loc[0][col]
-        for i in np.nditer(self.df[col]):
-            if m > i:
-                m = i
-        self.min.append(float(m))
-
-    def count_max(self, col):
-        m = self.df.loc[0][col]
-        for i in np.nditer(self.df[col]):
-            if m < i:
-                m = i
-        self.max.append(float(m))
-
-    def count_madian(self, col):
-        n = len(self.df[col][self.df[col].isna() == False])
-        # n = len(self.df[col])
-        # i = math.floor(n/2)
-        if n%2 == 1:
-            i = math.ceil(n / 2) - 1
-            print(self.df[col].sort_values().loc[i], "*")
+    def count_percentile(self, sorted_data, perc, l):
+        n = len(sorted_data)
+        index = perc * (n - 1)
+        if index == math.trunc(index):
+          l.append(sorted_data[int(index)])
         else:
-            i = n/2 - 1
-            print((self.df[col].sort_values().loc[i] + self.df[col].sort_values().loc[i + 1]) / 2, "&")
-
-    # def count_upper_quartile(self, col):
-    #     n = len(self.df[col][self.df[col].isna() == False])
-    #     i = round(0.75 * (n + 1) - 2)
-    #     print("n = ", n, "i = ", i)
-    #     # print("i = ", round(i))
-    #     value_1 = self.df[col].sort_values().iloc[i]
-    #     value_2 = self.df[col].sort_values().iloc[i + 1]
-    #     if n%2 == 0:
-    #         print((value_2 - value_1) * 0.75 + value_1, "&")
-    #     else:
-    #         print(value_2, "*")
-
-
-        # print(self.df[col].sort_values().iloc[i])
-        # print(np.percentile(self.df[col], 75))
-        # self.upper_quartile.append(self.df[col].sort_values()[i])
-
+          l.append((sorted_data[int(np.floor(index))] * (np.ceil(index) - index)) + (sorted_data[int(np.ceil(index))]) * (index - np.floor(index))) 
+          
     def describe(self):
-        print(self.cols)
         for col in self.cols:
+            sorted_data = sorted([i for i in df[col] if i == i])
+            self.count.append(len(sorted_data))
             self.count_mean(col)
             self.count_std(col)
-            self.count_min(col)
-            self.count_max(col)
-            self.count_madian(col)
-            # self.count_upper_quartile(col)
+            self.min.append(sorted_data[0])
+            self.max.append(sorted_data[-1])
+            self.count_percentile(sorted_data, 1/4, self.quartile_25)
+            self.count_percentile(sorted_data, 1/2, self.quartile_50)
+            self.count_percentile(sorted_data, 3/4, self.quartile_75)
 
-
-        print(self.mean)
-        print(self.std)
-        print(self.min)
-        print(self.max)
-        print(self.upper_quartile)
-
-
-
+        d = {'count': self.count,'mean': self.mean, 'std': self.std, 'min': self.min, '25%': self.quartile_25, '50%': self.quartile_50, '75%': self.quartile_75, 'max': self.max}
+        description = pd.DataFrame(data = d, index=self.cols)
+        return description.T
 
 
 if __name__ == '__main__':
